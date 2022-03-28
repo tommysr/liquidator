@@ -8,6 +8,7 @@ import { toDecimal } from '@synthetify/sdk/lib/utils'
 export class Prices {
   public assetsList: AssetsList
   private connection: Connection
+  public callback: () => void = () => { }
 
   private constructor(connection: Connection, assetsList: AssetsList) {
     this.connection = connection
@@ -15,7 +16,7 @@ export class Prices {
 
     // Subscribe to oracle updates
     this.assetsList.assets.forEach(({ feedAddress }, index) => {
-      connection.onAccountChange(feedAddress, accountInfo => {
+      connection.onAccountChange(feedAddress, async accountInfo => {
         const { price } = parsePriceData(accountInfo.data)
         if (price == null) return
 
@@ -23,8 +24,14 @@ export class Prices {
           new BN(price * 10 ** ORACLE_OFFSET),
           ORACLE_OFFSET
         )
+
+        this.callback()
       })
     })
+  }
+
+  public onChange(callback: () => void) {
+    this.callback = callback
   }
 
   public static async build<T>(connection: Connection, assetsList: AssetsList) {
