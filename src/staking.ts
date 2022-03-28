@@ -82,6 +82,8 @@ const checkAccounts = async (params: checkAccountsParams) => {
 
 export const stakingLoop = async (exchange: Exchange, wallet: Account) => {
   const { connection, programId: exchangeProgram } = exchange
+  const coder = new AccountsCoder(IDL as Idl)
+  let checking = false
 
   const state = new Synchronizer<ExchangeState>(
     connection,
@@ -90,14 +92,33 @@ export const stakingLoop = async (exchange: Exchange, wallet: Account) => {
     await exchange.getState()
   )
 
+
+  const accounts = await connection.getProgramAccounts(exchangeProgram, {
+    filters: [{ dataSize: 1420 }]
+  })
+
+
+
+  accounts.forEach((data) => {
+    const account = parseUser(data.account, coder)
+    synchronizers.set(data.pubkey, new Synchronizer<ExchangeAccount>(connection, data.pubkey, 'exchangeAccount', account))
+  })
+
   const prices = await Prices.build(
     connection,
     await exchange.getAssetsList(state.account.assetsList)
   )
-
   const priceObservalbe = new Observable(observer => prices.onChange(() => observer.next())).pipe(throttle(_ => interval(50)))
 
-  let checking = false
+  const collateralAccounts = await createAccountsOnAllCollaterals(
+    wallet,
+    connection,
+    prices.assetsList
+  )
+  const xUSDAddress = prices.assetsList.synthetics[0].assetAddress
+  const xUSDToken = new Token(connection, xUSDAddress, TOKEN_PROGRAM_ID, wallet)
+  let xUSDAccount = await xUSDToken.getOrCreateAssociatedAccountInfo(wallet.publicKey)
+
 
   priceObservalbe.subscribe(async () => {
     if (!checking) {
@@ -117,25 +138,7 @@ export const stakingLoop = async (exchange: Exchange, wallet: Account) => {
     }
   })
 
-  const collateralAccounts = await createAccountsOnAllCollaterals(
-    wallet,
-    connection,
-    prices.assetsList
-  )
 
-  const xUSDAddress = prices.assetsList.synthetics[0].assetAddress
-  const xUSDToken = new Token(connection, xUSDAddress, TOKEN_PROGRAM_ID, wallet)
-  let xUSDAccount = await xUSDToken.getOrCreateAssociatedAccountInfo(wallet.publicKey)
 
-  const accounts = await connection.getProgramAccounts(exchangeProgram, {
-    filters: [{ dataSize: 1420 }]
-  })
-
-  const coder = new AccountsCoder(IDL as Idl)
-
-  accounts.forEach((data) => {
-    const account = parseUser(data.account, coder)
-    synchronizers.set(data.pubkey, new Synchronizer<ExchangeAccount>(connection, data.pubkey, 'exchangeAccount', account))
-  })
 
 }

@@ -1,4 +1,4 @@
-import { Account, Keypair } from '@solana/web3.js'
+import { Account, Connection, Keypair } from '@solana/web3.js'
 import { Provider, Wallet } from '@project-serum/anchor'
 import { Network } from '@synthetify/sdk/lib/network'
 import { Exchange } from '@synthetify/sdk/lib/exchange'
@@ -7,13 +7,9 @@ import { getConnection } from './utils'
 import { stakingLoop } from './staking'
 import { bs58 } from '@project-serum/anchor/dist/cjs/utils/bytes'
 
-const NETWORK = Network.MAIN
-const SCAN_INTERVAL = 1000 * 60 * 5
-
 const secretWallet = new Wallet(Keypair.fromSecretKey(bs58.decode(process?.env?.PRIV_KEY ?? '')))
-
-
-const connection = getConnection(NETWORK)
+const NETWORK = Network.MAIN
+const connection = new Connection('https://solana-api.projectserum.com')
 const provider = new Provider(connection, secretWallet, { commitment: 'recent' })
 
 // @ts-expect-error
