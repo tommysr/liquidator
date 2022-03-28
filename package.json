@@ -22,6 +22,7 @@
     "@solana/web3.js": "^1.2.3",
     "@synthetify/sdk": "^1.0.24",
     "mocha": "^8.3.2",
+    "rxjs": "^7.5.5",
     "ts-mocha": "^8.0.0"
   },
   "devDependencies": {
